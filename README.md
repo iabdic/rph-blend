@@ -10,4 +10,6 @@ Clean energy from plants. A showcase site for the RPH Blend launch.
 - **Crack it open.** Tap the can (or the "Crack it open" button). The tab lifts, the can tips, and it pours out its ingredients: stevia leaf, matcha, yerba mate, guarana, guayusa, citrus, roots and flowers, with floating name tags.
 - **Ingredient library, label comparison and a waitlist form.** The form is demo-only and doesn't store emails.
 
-Everything (can labels, ingredient art, nutrition panels) is drawn in code, so it's one self-contained `index.html` with no image assets. Open it in any modern browser.
+Everything (can labels, ingredient art, nutrition panels) is drawn in code, so the site is one self-contained `public/index.html` with no image assets. QR codes for rphblend.com are in `public/qr/`.
+
+
