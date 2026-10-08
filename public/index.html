@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+</head>
+<body>
+<title>RPH Blend</title>
+<meta name="description" content="RPH Blend is clean energy from plants: plant caffeine, stevia leaf, real fruit. Spin the can, crack it open, see what's inside.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800;900&family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a sticky 3D stage (one can per flavor, scroll moves the lineup) with copy panels scrolling over it,
+   then a pale "botanical paper" section stack. One committed look; every color is set explicitly. */
+:root{
+  --ink:#0f2119;          /* deep leaf ink, text on paper */
+  --paper:#edf2ea;        /* pale sage paper */
+  --paper-2:#dfe8db;      /* card / rule tone on paper */
+  --leaf:#2d7a4e;         /* brand green */
+  --muted:#53665b;        /* secondary text on paper */
+  --night:#0b2219;        /* dark ground for nav + CTA */
+  --white:#f5faf2;        /* text on dark */
+  --bg:#0b2a1f;           /* stage ground, set per flavor by JS */
+  --accent:#c4ee6a;       /* stage accent, set per flavor by JS */
+  --f-display:"Unbounded","Arial Black",system-ui,sans-serif;
+  --f-body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--night);color:var(--white);font-family:var(--f-body);font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+h1,h2,h3{margin:0;text-wrap:balance}
+p{margin:0}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+
+/* NAV */
+.nav{position:fixed;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;gap:16px;
+  padding:calc(14px + env(safe-area-inset-top,0px)) clamp(16px,4vw,48px) 14px;transition:background .4s,color .4s,box-shadow .4s}
+.nav.solid{background:rgba(237,242,234,.92);color:var(--ink);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 1px 0 var(--paper-2)}
+.mark{display:flex;align-items:center;gap:10px;text-decoration:none;color:inherit;font-family:var(--f-display);font-weight:800;font-size:15px;letter-spacing:.06em}
+.mark svg{width:22px;height:22px}
+.nav ul{display:flex;gap:clamp(14px,2.4vw,32px);list-style:none;margin:0;padding:0}
+.nav a.l{color:inherit;text-decoration:none;font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;opacity:.82}
+.nav a.l:hover{opacity:1}
+.nav .cta{font-family:var(--f-mono);font-size:12px;letter-spacing:.06em;text-transform:uppercase;text-decoration:none;color:var(--ink);background:var(--accent);padding:9px 14px;border-radius:999px;font-weight:500;transition:background .4s}
+.nav.solid .cta{background:var(--ink);color:var(--paper)}
+@media (max-width:820px){.nav ul{display:none}}
+
+/* STAGE */
+.stage{position:relative}
+.sticky{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;background:var(--bg);transition:background .2s linear}
+.sticky::before{content:"";position:absolute;inset:0;background:radial-gradient(42vmax 42vmax at var(--gx,68%) var(--gy,50%),color-mix(in srgb,var(--accent) 34%,transparent),transparent 70%);opacity:.55;pointer-events:none}
+.sticky::after{content:"";position:absolute;inset:0;pointer-events:none;opacity:.07;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+.bgword{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;padding-right:2vw;
+  font-family:var(--f-display);font-weight:900;font-size:clamp(64px,13vw,210px);line-height:.86;letter-spacing:-.02em;
+  color:transparent;-webkit-text-stroke:1.5px color-mix(in srgb,var(--white) 16%,transparent);pointer-events:none;user-select:none;opacity:0;will-change:transform,opacity}
+#gl{position:absolute;inset:0;width:100%;height:100%;z-index:1;touch-action:pan-y;cursor:grab;display:block}
+#gl.grabbing{cursor:grabbing}
+#gl.pointer{cursor:pointer}
+#tags{position:absolute;inset:0;z-index:2;pointer-events:none}
+.tag{position:absolute;left:0;top:0;white-space:nowrap;font-family:var(--f-mono);font-size:12px;font-weight:500;letter-spacing:.02em;
+  padding:5px 10px 5px 8px;border-radius:999px;background:var(--white);color:var(--ink);box-shadow:0 6px 18px rgba(0,0,0,.25);
+  display:flex;align-items:center;gap:6px;will-change:transform,opacity}
+.tag i{width:7px;height:7px;border-radius:50%;background:var(--leaf)}
+.dots{position:absolute;z-index:3;right:clamp(12px,2vw,28px);top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:14px}
+.dots button{position:relative;width:14px;height:14px;border-radius:50%;border:1.5px solid color-mix(in srgb,var(--white) 60%,transparent);background:transparent;cursor:pointer;padding:0;transition:background .3s,transform .3s}
+.dots button.on{background:var(--accent);border-color:var(--accent);transform:scale(1.2)}
+.dots button span{position:absolute;right:24px;top:50%;transform:translateY(-50%);font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;opacity:0;transition:opacity .2s;pointer-events:none}
+.dots button:hover span,.dots button:focus-visible span{opacity:.9}
+.scrollhint{position:absolute;z-index:3;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);font-family:var(--f-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;opacity:.7;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none;transition:opacity .4s}
+.scrollhint b{display:block;width:1px;height:28px;background:linear-gradient(var(--white),transparent);animation:drip 1.8s ease-in-out infinite}
+@keyframes drip{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+.loading{position:absolute;inset:0;display:grid;place-items:center;z-index:2;font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;opacity:.6;pointer-events:none}
+
+/* PANELS */
+.panels{position:relative;z-index:4;margin-top:-100vh;margin-top:-100svh;pointer-events:none}
+.panel{min-height:100vh;min-height:100svh;display:flex;align-items:center;padding:96px clamp(16px,6vw,96px) 72px}
+.copy{max-width:min(470px,40vw);display:flex;flex-direction:column;gap:18px}
+.copy button,.copy a{pointer-events:auto}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--pa,var(--accent));display:flex;gap:12px;align-items:center}
+.eyebrow .num{color:var(--white);opacity:.6}
+.intro h1{font-family:var(--f-display);font-weight:800;font-size:clamp(44px,6.4vw,92px);line-height:.95;letter-spacing:-.03em}
+.intro h1 em{font-style:normal;color:var(--accent);display:block}
+.lede{font-size:clamp(16px,1.3vw,19px);max-width:42ch;opacity:.86}
+.fname{font-family:var(--f-display);font-weight:800;font-size:clamp(40px,5.4vw,80px);line-height:.92;letter-spacing:-.03em}
+.desc{max-width:40ch;opacity:.86}
+.facts{display:grid;grid-template-columns:repeat(3,auto);justify-content:start;gap:0;margin:4px 0 0;border-top:1px solid color-mix(in srgb,var(--white) 22%,transparent);border-bottom:1px solid color-mix(in srgb,var(--white) 22%,transparent)}
+.facts div{padding:10px 22px 10px 0;margin-right:22px;border-right:1px solid color-mix(in srgb,var(--white) 22%,transparent)}
+.facts div:last-child{border-right:0;margin-right:0}
+.facts dt{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.65}
+.facts dd{margin:2px 0 0;font-family:var(--f-display);font-weight:600;font-size:26px;font-variant-numeric:tabular-nums;line-height:1.1}
+.facts small{font-family:var(--f-mono);font-size:12px;font-weight:500;margin-left:3px;opacity:.8}
+.chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}
+.chips li{font-size:13px;font-weight:600;padding:6px 12px;border-radius:999px;border:1px solid color-mix(in srgb,var(--white) 30%,transparent);transition:background .35s,color .35s,border-color .35s,transform .35s}
+.chips li.lit{background:var(--pa);border-color:var(--pa);color:var(--pi);transform:translateY(-2px)}
+.actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin-top:4px}
+.crack{border:0;cursor:pointer;background:var(--pa,var(--accent));color:var(--pi,var(--ink));font-weight:800;font-size:14px;letter-spacing:.06em;text-transform:uppercase;padding:15px 22px;border-radius:999px;display:inline-flex;align-items:center;gap:10px;box-shadow:0 10px 30px -10px var(--pa);transition:transform .2s}
+.crack:hover{transform:translateY(-2px)}
+.crack:disabled{opacity:.6;cursor:default;transform:none}
+.crack svg{width:18px;height:18px}
+.hint{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;opacity:.7;display:flex;align-items:center;gap:8px}
+.hint svg{width:22px;height:14px}
+
+@media (max-width:820px){
+  .panel{align-items:flex-end;padding:0 16px calc(28px + env(safe-area-inset-bottom,0px))}
+  .copy{max-width:100%;gap:12px;padding:18px;border-radius:22px;background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+  .panel.intro .copy{background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0 0 40px}
+  .intro h1{font-size:44px}
+  .fname{font-size:38px}
+  .desc{font-size:14.5px}
+  .facts dd{font-size:21px}
+  .facts div{padding-right:14px;margin-right:14px}
+  .chips li{font-size:12px;padding:5px 10px}
+  .dots{top:auto;bottom:auto;top:calc(76px + env(safe-area-inset-top,0px));transform:none;flex-direction:row;right:16px}
+  .dots button span{display:none}
+  .bgword{align-items:center;justify-content:flex-start;padding:110px 0 0;font-size:19vw;text-align:center}
+  .scrollhint{display:none}
+  .copy{transition:opacity .5s}
+  body.pouring .copy{opacity:.3}
+}
+
+/* PAPER SECTIONS */
+.paper{background:var(--paper);color:var(--ink);position:relative;z-index:5}
+.wrap{max-width:1200px;margin:0 auto;padding-inline:clamp(16px,4vw,48px)}
+.sec{padding-block:clamp(72px,10vw,140px)}
+.kicker{font-family:var(--f-mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--leaf)}
+.h2{font-family:var(--f-display);font-weight:800;font-size:clamp(34px,4.6vw,64px);line-height:1;letter-spacing:-.03em;margin-top:14px;max-width:16ch}
+.sub{color:var(--muted);max-width:56ch;margin-top:18px;font-size:17px}
+.groups{margin-top:clamp(40px,6vw,72px);display:flex;flex-direction:column}
+.group{display:grid;grid-template-columns:minmax(0,260px) minmax(0,1fr);gap:clamp(20px,4vw,56px);padding-block:36px;border-top:1px solid var(--paper-2)}
+.group h3{font-family:var(--f-display);font-weight:600;font-size:22px;letter-spacing:-.01em}
+.group p{color:var(--muted);font-size:14.5px;margin-top:8px;max-width:30ch}
+.cards{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;min-width:0}
+.card{background:#fff;border-radius:18px;padding:16px;display:grid;grid-template-columns:64px minmax(0,1fr);gap:14px;align-items:start}
+.card img{width:64px;height:64px;display:block}
+.card h4{margin:2px 0 0;font-size:15.5px;font-weight:800;letter-spacing:-.01em}
+.card .role{font-size:13.5px;color:var(--muted);margin-top:4px;line-height:1.45}
+.card .in{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.card .in span{font-family:var(--f-mono);font-size:10.5px;letter-spacing:.04em;padding:3px 7px;border-radius:999px;background:var(--paper);color:var(--ink)}
+.card .in span i{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:5px;vertical-align:0}
+.sweet{display:grid;grid-template-columns:120px minmax(0,1fr);gap:24px;align-items:center;background:#fff;border-radius:22px;padding:22px 26px}
+.sweet img{width:120px;height:120px}
+.sweet h4{margin:0;font-family:var(--f-display);font-weight:600;font-size:22px}
+.sweet p{color:var(--muted);margin-top:6px;max-width:52ch;font-size:15px}
+.sweet .big{font-family:var(--f-display);font-weight:800;font-size:15px;margin-top:12px;color:var(--leaf);letter-spacing:.02em}
+@media (max-width:820px){.group{grid-template-columns:1fr}.cards{grid-template-columns:1fr}.sweet{grid-template-columns:72px minmax(0,1fr);padding:18px}.sweet img{width:72px;height:72px}}
+
+/* COMPARE */
+.compare{background:var(--paper-2)}
+.tbl-wrap{margin-top:48px;overflow-x:auto;border-radius:22px;background:#fff}
+table{width:100%;border-collapse:collapse;min-width:560px}
+th,td{text-align:left;padding:18px 22px;border-bottom:1px solid var(--paper-2);vertical-align:top;font-size:15px}
+thead th{font-family:var(--f-mono);font-weight:500;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+thead th.us{color:var(--leaf)}
+tbody th{font-weight:700;width:22%}
+td.us{font-weight:700;color:var(--ink)}
+td.us b{font-family:var(--f-display);font-weight:800;font-size:22px;font-variant-numeric:tabular-nums}
+td.them{color:var(--muted)}
+td.them b{font-family:var(--f-display);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums}
+tbody tr:last-child th,tbody tr:last-child td{border-bottom:0}
+.fine{font-size:12.5px;color:var(--muted);margin-top:14px}
+
+/* LINEUP STRIP */
+.strip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:48px}
+.flv{border-radius:22px;padding:20px 18px 18px;color:var(--fi);background:var(--fb);display:flex;flex-direction:column;gap:12px;min-height:280px;cursor:pointer;border:0;text-align:left;font:inherit;transition:transform .3s}
+.flv:hover{transform:translateY(-4px)}
+.flv img{width:100%;height:130px;object-fit:cover;object-position:center;border-radius:12px;display:block}
+.flv h4{margin:0;font-family:var(--f-display);font-weight:800;font-size:20px;letter-spacing:-.01em}
+.flv p{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;opacity:.85}
+.flv .go{margin-top:auto;font-size:13px;font-weight:700}
+@media (max-width:900px){.strip{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* CTA */
+.drop{background:var(--night);color:var(--white);position:relative;z-index:5;overflow:hidden}
+.drop .wrap{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:clamp(32px,6vw,80px);align-items:end}
+.drop .h2{color:var(--white);max-width:12ch}
+.drop .h2 em{font-style:normal;color:#c4ee6a}
+.drop .sub{color:rgba(245,250,242,.75)}
+form{display:flex;flex-direction:column;gap:10px}
+label{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.field{display:flex;gap:8px;background:rgba(245,250,242,.08);border:1px solid rgba(245,250,242,.2);border-radius:999px;padding:6px}
+.field input{flex:1;min-width:0;background:transparent;border:0;color:var(--white);font:inherit;font-size:16px;padding:10px 14px;outline:none}
+.field input::placeholder{color:rgba(245,250,242,.45)}
+.field button{border:0;background:#c4ee6a;color:#123b26;font-weight:800;padding:12px 20px;border-radius:999px;cursor:pointer;letter-spacing:.04em}
+.msg{font-size:14px;min-height:1.5em;color:#c4ee6a}
+.swatches{display:flex;gap:8px;margin-top:22px}
+.swatches span{width:34px;height:34px;border-radius:50%;border:2px solid rgba(245,250,242,.25)}
+footer{background:var(--night);color:rgba(245,250,242,.6);position:relative;z-index:5;font-size:13px}
+footer .wrap{display:flex;flex-wrap:wrap;gap:12px 32px;justify-content:space-between;padding-block:28px calc(28px + env(safe-area-inset-bottom,0px));border-top:1px solid rgba(245,250,242,.12)}
+@media (max-width:820px){.drop .wrap{grid-template-columns:1fr}}
+
+.nogl .stagefallback{display:grid}
+.stagefallback{display:none;position:absolute;inset:0;place-items:center;z-index:1}
+.stagefallback img{max-width:min(70vw,520px);border-radius:12px;box-shadow:0 30px 60px rgba(0,0,0,.35)}
+
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}.scrollhint b{animation:none}.crack,.flv{transition:none}}
+</style>
+
+<header class="nav" id="nav">
+  <a class="mark" href="#top" aria-label="RPH Blend home">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.5c5 3.2 7.2 7 6.6 11.2-.6 4-3.6 6.8-6.6 7.8-3-1-6-3.8-6.6-7.8C4.8 9.5 7 5.7 12 2.5Z" fill="currentColor"/><path d="M12 7v14" stroke="var(--bg)" stroke-width="1.6" stroke-linecap="round"/></svg>
+    RPH&nbsp;BLEND
+  </a>
+  <ul>
+    <li><a class="l" href="#lineup">Flavors</a></li>
+    <li><a class="l" href="#inside">Ingredients</a></li>
+    <li><a class="l" href="#compare">Compare</a></li>
+  </ul>
+  <a class="cta" href="#drop">First drop</a>
+</header>
+
+<main id="top">
+<section class="stage" id="stage" aria-label="RPH Blend flavors">
+  <div class="sticky" id="sticky">
+    <div class="bgword" aria-hidden="true">MATCHA<br>LIME</div>
+    <div class="bgword" aria-hidden="true">YUZU<br>GINGER</div>
+    <div class="bgword" aria-hidden="true">HIBISCUS<br>BERRY</div>
+    <div class="bgword" aria-hidden="true">COCONUT<br>PASSION</div>
+    <div class="loading" id="loading">Chilling the cans…</div>
+    <canvas id="gl" aria-hidden="true"></canvas>
+    <div class="stagefallback" id="fallback"><img alt="RPH Blend can label" id="fallbackImg"></div>
+    <div id="tags" aria-hidden="true"></div>
+    <nav class="dots" id="dots" aria-label="Jump to a flavor"></nav>
+    <div class="scrollhint" id="scrollhint">Scroll for the lineup<b></b></div>
+  </div>
+
+  <div class="panels" id="panels">
+    <article class="panel intro">
+      <div class="copy">
+        <p class="eyebrow">Clean energy · made from plants</p>
+        <h1>Energy, <em>grown.</em></h1>
+        <p class="lede">RPH Blend gets its lift from tea leaves, guarana seeds and guayusa, its sweetness from the stevia leaf, and its color from fruit and flowers. Nothing synthetic, nothing to crash from.</p>
+        <p class="hint"><svg viewBox="0 0 22 14" fill="none" aria-hidden="true"><path d="M1 7h20M1 7l4-4M1 7l4 4M21 7l-4-4M21 7l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Drag the can to spin it · tap it to crack it open</p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<div class="paper">
+  <section class="sec" id="lineup">
+    <div class="wrap">
+      <p class="kicker">The lineup</p>
+      <h2 class="h2">Four cans. Four plant-powered lifts.</h2>
+      <p class="sub">Every flavor uses a different caffeine plant, so each one feels a little different. Pick a can to jump back up and crack it open.</p>
+      <div class="strip" id="strip"></div>
+    </div>
+  </section>
+
+  <section class="sec" id="inside" style="padding-top:0">
+    <div class="wrap">
+      <p class="kicker">What's inside</p>
+      <h2 class="h2">Every ingredient has a job.</h2>
+      <p class="sub">Seventeen plants across the range. These are the ones that pour out when you crack a can, and why they're there.</p>
+      <div class="groups" id="groups"></div>
+    </div>
+  </section>
+
+  <section class="sec compare" id="compare">
+    <div class="wrap">
+      <p class="kicker">Read the label</p>
+      <h2 class="h2">Same lift. Cleaner can.</h2>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th scope="col">Per can</th><th scope="col" class="us">RPH Blend · 355 mL</th><th scope="col">Typical energy drink · 473 mL</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Sugar</th><td class="us"><b>0 g</b></td><td class="them"><b>54 g</b></td></tr>
+            <tr><th scope="row">Calories</th><td class="us"><b>10–25</b> kcal</td><td class="them"><b>210</b> kcal</td></tr>
+            <tr><th scope="row">Caffeine</th><td class="us"><b>100–140</b> mg from matcha, yerba mate, guarana or guayusa</td><td class="them"><b>160</b> mg, synthetic caffeine anhydrous</td></tr>
+            <tr><th scope="row">Sweetener</th><td class="us">Stevia leaf</td><td class="them">Sucrose and glucose, or sucralose</td></tr>
+            <tr><th scope="row">Color</th><td class="us">Hibiscus, turmeric, beetroot, matcha</td><td class="them">Caramel color or synthetic dyes</td></tr>
+            <tr><th scope="row">Can</th><td class="us">Infinitely recyclable aluminum</td><td class="them">Aluminum</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="fine">Typical values based on leading 16 fl oz energy drinks. RPH Blend values are concept targets for the launch formulas.</p>
+    </div>
+  </section>
+</div>
+
+<section class="drop sec" id="drop">
+  <div class="wrap">
+    <div>
+      <p class="kicker" style="color:#c4ee6a">First drop · Spring 2027</p>
+      <h2 class="h2">Get the first <em>cold one.</em></h2>
+      <p class="sub">We're launching with all four flavors in a limited first run. Leave your email and we'll tell you when and where to find a can.</p>
+      <div class="swatches" id="swatches" aria-hidden="true"></div>
+    </div>
+    <form id="form" novalidate>
+      <label for="email">Email address</label>
+      <div class="field"><input id="email" name="email" type="email" placeholder="you@example.com" autocomplete="email"><button type="submit">Notify me</button></div>
+      <p class="msg" id="msg" role="status"></p>
+    </form>
+  </div>
+</section>
+<footer>
+  <div class="wrap">
+    <span>© 2026 RPH Blend. Clean energy from plants.</span>
+    <span>Concept preview · formulas and values are illustrative</span>
+  </div>
+</footer>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+"use strict";
+const TAU=Math.PI*2;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>{t=clamp(t,0,1);return t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2};
+const rand=(a,b)=>a+Math.random()*(b-a);
+const hex=h=>{const n=parseInt(h.slice(1),16);return[n>>16&255,n>>8&255,n&255]};
+const mix=(a,b,t)=>{const A=hex(a),B=hex(b);return '#'+A.map((v,i)=>Math.round(lerp(v,B[i],t)).toString(16).padStart(2,'0')).join('')};
+
+/* ---------- DATA ---------- */
+const FLAVORS=[
+ {name:'Green Current',notes:'Matcha · Lime · Mint',bg:'#0b2a1f',can:'#1f7049',can2:'#0e432e',accent:'#c4ee6a',ink:'#f3fbe9',pillBg:'#c4ee6a',pillInk:'#123b26',liquid:'#b5dc5e',
+  caffeine:120,kcal:10,carbs:3,source:'matcha green tea',ing:['matcha','stevia','lime','mint','ginseng'],
+  desc:'Stone-ground matcha with fresh lime and a cool hit of peppermint. Steady, clear-headed energy for long afternoons.',
+  list:'Sparkling water, matcha green tea, lime juice, peppermint extract, Panax ginseng root, stevia leaf extract, citric acid.'},
+ {name:'Golden Hour',notes:'Yuzu · Ginger · Turmeric',bg:'#45200b',can:'#f2ae3a',can2:'#d5781c',accent:'#ffd978',ink:'#2b1606',pillBg:'#2b1606',pillInk:'#ffd978',liquid:'#ffc94a',
+  caffeine:140,kcal:15,carbs:4,source:'yerba mate',ing:['yerba','ginger','yuzu','turmeric','stevia'],
+  desc:'Yerba mate and fresh ginger, brightened with yuzu and grounded with turmeric. Warm, citrusy and built for early starts.',
+  list:'Sparkling water, yerba mate leaf extract, yuzu juice, ginger root juice, turmeric root, stevia leaf extract, citric acid.'},
+ {name:'Wild Bloom',notes:'Hibiscus · Açaí · Guarana',bg:'#380b27',can:'#b8235f',can2:'#741240',accent:'#ffa6c9',ink:'#fff1f6',pillBg:'#ffa6c9',pillInk:'#4a0d2c',liquid:'#e0306f',
+  caffeine:110,kcal:15,carbs:4,source:'guarana seed',ing:['guarana','hibiscus','acai','beet','stevia'],
+  desc:'Amazonian guarana with tart hibiscus and dark açaí. Ruby red from flowers and beetroot, with no dye in sight.',
+  list:'Sparkling water, hibiscus flower infusion, açaí berry purée, guarana seed extract, beetroot juice, stevia leaf extract.'},
+ {name:'Tide Rush',notes:'Passionfruit · Coconut · Guayusa',bg:'#062e36',can:'#1f9c9a',can2:'#0b5f6b',accent:'#ffd25e',ink:'#effffd',pillBg:'#ffd25e',pillInk:'#073840',liquid:'#f6d56a',
+  caffeine:100,kcal:25,carbs:6,source:'guayusa leaf',ing:['guayusa','coconut','passion','pineapple','stevia'],
+  desc:'Guayusa leaf and coconut water with passionfruit and pineapple. A lighter, hydrating lift for training days and beach days.',
+  list:'Coconut water, sparkling water, guayusa leaf extract, passionfruit juice, pineapple juice, stevia leaf extract, sea salt.'}
+];
+const ING={
+ matcha:{name:'Matcha green tea',g:'lift',role:'Plant caffeine plus L-theanine, the amino acid behind tea’s calm focus.'},
+ yerba:{name:'Yerba mate',g:'lift',role:'South American holly leaf with an earthy, toasty caffeine lift.'},
+ guarana:{name:'Guarana seed',g:'lift',role:'Amazonian seed carrying about twice the caffeine of a coffee bean.'},
+ guayusa:{name:'Guayusa leaf',g:'lift',role:'Ecuadorian leaf brewed for centuries. Smooth, mellow caffeine.'},
+ stevia:{name:'Stevia leaf',g:'sweet',role:'Sweetness from a leaf, 200 times sweeter than sugar. Zero sugar, zero calories, no aftertaste tricks.'},
+ lime:{name:'Lime',g:'flavor',role:'Sharp, bright acidity and a hit of vitamin C.'},
+ yuzu:{name:'Yuzu',g:'flavor',role:'Fragrant Japanese citrus between lemon and mandarin.'},
+ mint:{name:'Peppermint',g:'support',role:'A cooling finish that wakes up the palate.'},
+ hibiscus:{name:'Hibiscus',g:'flavor',role:'Tart flower that turns the drink ruby red.'},
+ acai:{name:'Açaí berry',g:'flavor',role:'Dark berry flavor with a cocoa-like finish.'},
+ passion:{name:'Passionfruit',g:'flavor',role:'Tropical, tangy and very aromatic.'},
+ pineapple:{name:'Pineapple',g:'flavor',role:'Juicy sweetness with natural bromelain.'},
+ ginseng:{name:'Panax ginseng',g:'support',role:'Adaptogen root traditionally taken for stamina.'},
+ ginger:{name:'Ginger root',g:'support',role:'Warming spice that is kind to the stomach.'},
+ turmeric:{name:'Turmeric',g:'support',role:'Golden color and earthy warmth. No dye needed.'},
+ beet:{name:'Beetroot',g:'support',role:'Natural ruby color with dietary nitrates.'},
+ coconut:{name:'Coconut water',g:'support',role:'Natural electrolytes, potassium first.'}
+};
+const GROUPS=[
+ {k:'lift',t:'The lift',d:'Four caffeine plants, one per flavor. No caffeine anhydrous, ever.'},
+ {k:'sweet',t:'The sweetness',d:'One leaf does all of it.'},
+ {k:'flavor',t:'The flavor',d:'Real fruit, flowers and herbs, not "natural flavors" from a lab.'},
+ {k:'support',t:'The backup',d:'Roots, herbs and waters that add color, warmth, freshness and hydration.'}
+];
+
+/* ---------- INGREDIENT ART (2D canvas, reused for 3D particles, label and cards) ---------- */
+function cv(w,h){const c=document.createElement('canvas');c.width=w;c.height=h||w;return c}
+function circle(g,x,y,r){g.beginPath();g.arc(x,y,r,0,TAU);g.fill()}
+function leaf(o){return g=>{
+  const N=64,L=[],R=[],top=12,bot=226,H=bot-top,b=o.bend||0;
+  for(let i=0;i<=N;i++){const t=i/N;let w=o.w*112*Math.pow(Math.sin(Math.PI*Math.pow(t,o.skew||.85)),.8);
+    if(o.serr&&i>2&&i<N-3)w+=(i%2?-1:1)*o.serr;
+    const y=top+t*H,dx=Math.sin(t*Math.PI)*b;L.push([128-w+dx,y]);R.push([128+w+dx,y])}
+  g.beginPath();L.forEach(([x,y],i)=>i?g.lineTo(x,y):g.moveTo(x,y));for(let i=R.length-1;i>=0;i--)g.lineTo(R[i][0],R[i][1]);g.closePath();
+  const gr=g.createLinearGradient(30,20,226,240);gr.addColorStop(0,o.light);gr.addColorStop(1,o.dark);g.fillStyle=gr;g.fill();
+  g.strokeStyle='rgba(0,0,0,.18)';g.lineWidth=2;g.stroke();
+  g.strokeStyle=o.vein;g.lineCap='round';g.lineWidth=3.2;g.beginPath();g.moveTo(128,top+6);g.quadraticCurveTo(128+b*1.4,128,128,bot);g.lineTo(128,250);g.stroke();
+  g.lineWidth=1.7;for(let k=1;k<9;k++){const t=k/9.6,y=top+t*H,dx=Math.sin(t*Math.PI)*b,w=o.w*112*Math.pow(Math.sin(Math.PI*Math.pow(t,o.skew||.85)),.8)*.82;
+    g.beginPath();g.moveTo(128+dx,y);g.quadraticCurveTo(128+dx-w*.5,y-5,128+dx-w,y-20);g.moveTo(128+dx,y);g.quadraticCurveTo(128+dx+w*.5,y-5,128+dx+w,y-20);g.stroke()}
+  g.globalCompositeOperation='source-atop';const hl=g.createLinearGradient(0,0,256,40);hl.addColorStop(0,'rgba(255,255,255,0)');hl.addColorStop(.4,'rgba(255,255,255,.22)');hl.addColorStop(.52,'rgba(255,255,255,0)');g.fillStyle=hl;g.fillRect(0,0,256,256);g.globalCompositeOperation='source-over';
+}}
+function citrus(o){return g=>{
+  const c=128;g.fillStyle=o.rind;circle(g,c,c,120);g.fillStyle=o.pith;circle(g,c,c,109);
+  const n=o.n||10;for(let i=0;i<n;i++){const a0=i/n*TAU+.06,a1=(i+1)/n*TAU-.06,m=(a0+a1)/2;
+    g.beginPath();g.moveTo(c+Math.cos(m)*13,c+Math.sin(m)*13);g.arc(c,c,99,a0,a1);g.closePath();
+    const gr=g.createRadialGradient(c,c,8,c,c,100);gr.addColorStop(0,o.flesh2);gr.addColorStop(1,o.flesh);g.fillStyle=gr;g.fill()}
+  g.fillStyle='rgba(255,255,255,.3)';for(let i=0;i<90;i++){const a=Math.random()*TAU,r=22+Math.random()*72;g.beginPath();g.ellipse(c+Math.cos(a)*r,c+Math.sin(a)*r,2.2,6,a,0,TAU);g.fill()}
+  g.fillStyle=o.pith;circle(g,c,c,9);
+}}
+function blobPath(g,c,r,seed,sx){g.beginPath();for(let i=0;i<=60;i++){const a=i/60*TAU,rr=r+Math.sin(a*3+seed)*r*.05+Math.sin(a*7+seed*2)*r*.025;const x=c+Math.cos(a)*rr*(sx||1),y=c+Math.sin(a)*rr;i?g.lineTo(x,y):g.moveTo(x,y)}g.closePath()}
+function rootSlice(o){return g=>{
+  const c=128;blobPath(g,c,116,o.seed,o.sx);g.fillStyle=o.skin;g.fill();
+  blobPath(g,c,104,o.seed,o.sx);const gr=g.createRadialGradient(c-20,c-20,10,c,c,110);gr.addColorStop(0,o.in1);gr.addColorStop(1,o.in2);g.fillStyle=gr;g.fill();
+  g.strokeStyle=o.ring;g.lineWidth=o.rings?3:2.5;
+  if(o.rings){for(let r=18;r<100;r+=13){g.globalAlpha=.55;blobPath(g,c,r,o.seed,o.sx);g.stroke()}g.globalAlpha=1}
+  else{g.globalAlpha=.7;blobPath(g,c,66,o.seed,o.sx);g.stroke();g.globalAlpha=.35;g.lineWidth=1.5;for(let i=0;i<40;i++){const a=i/40*TAU;g.beginPath();g.moveTo(c+Math.cos(a)*14*(o.sx||1),c+Math.sin(a)*14);g.lineTo(c+Math.cos(a)*60*(o.sx||1),c+Math.sin(a)*60);g.stroke()}g.globalAlpha=1}
+}}
+const PAINT={
+ matcha:leaf({w:.42,light:'#6aa63a',dark:'#2c5c1d',vein:'#c9e59a',skew:.8}),
+ stevia:leaf({w:.5,light:'#8fd14f',dark:'#3d8a2a',vein:'#d8f2b0',serr:5,skew:.95}),
+ mint:leaf({w:.62,light:'#5fd17a',dark:'#1f7a43',vein:'#c4f2cf',serr:6,skew:1}),
+ yerba:leaf({w:.5,light:'#9aa84a',dark:'#55621f',vein:'#e2e7b0',serr:2.5,skew:.9}),
+ guayusa:leaf({w:.36,light:'#3fa06a',dark:'#13502f',vein:'#b9ebcd',skew:.75,bend:10}),
+ lime:citrus({rind:'#3f8f1f',pith:'#e6f3c4',flesh:'#a9d64b',flesh2:'#e3f59f'}),
+ yuzu:citrus({rind:'#f2b51f',pith:'#fff2c8',flesh:'#ffcf3f',flesh2:'#ffeea0',n:9}),
+ ginger:rootSlice({skin:'#b08a55',in1:'#fbe7a8',in2:'#efc96b',ring:'#c99c3c',seed:1.3,sx:1.12}),
+ ginseng:rootSlice({skin:'#c7a77a',in1:'#fff6e0',in2:'#ead6aa',ring:'#b89660',seed:2.1}),
+ turmeric:rootSlice({skin:'#9b5d26',in1:'#ffb02e',in2:'#f07d10',ring:'#c75a07',seed:.4,sx:1.08}),
+ beet:rootSlice({skin:'#5b0f2c',in1:'#e2457f',in2:'#9e1550',ring:'#ffd1e3',seed:3,rings:true}),
+ guarana:g=>{const c=128;let gr=g.createRadialGradient(100,90,10,128,128,120);gr.addColorStop(0,'#ff5a3c');gr.addColorStop(1,'#a3160c');g.fillStyle=gr;circle(g,c,c,116);
+   g.fillStyle='#fdf6ea';g.beginPath();g.ellipse(c,c+6,74,80,0,0,TAU);g.fill();g.fillStyle='#1c1210';circle(g,c,c+14,50);g.fillStyle='rgba(255,255,255,.55)';circle(g,c-16,c-4,12)},
+ hibiscus:g=>{const c=128;for(let i=0;i<5;i++){g.save();g.translate(c,c);g.rotate(i/5*TAU);const gr=g.createLinearGradient(0,0,0,-118);gr.addColorStop(0,'#7d0a2f');gr.addColorStop(.35,'#d81e5b');gr.addColorStop(1,'#ff6f9c');g.fillStyle=gr;
+   g.beginPath();g.moveTo(0,0);g.bezierCurveTo(-74,-34,-70,-118,0,-120);g.bezierCurveTo(70,-118,74,-34,0,0);g.fill();g.restore()}
+   g.fillStyle='#4a0518';circle(g,c,c,24);g.strokeStyle='#ffe07a';g.lineWidth=5;g.lineCap='round';g.beginPath();g.moveTo(c,c);g.lineTo(c+28,c-56);g.stroke();g.fillStyle='#ffd23f';for(let i=0;i<7;i++)circle(g,c+22+i*1.4+rand(-6,6),c-48-i*2+rand(-6,6),4)},
+ acai:g=>{const c=128;const gr=g.createRadialGradient(92,88,6,128,128,116);gr.addColorStop(0,'#7c4a9a');gr.addColorStop(.5,'#3a1452');gr.addColorStop(1,'#16061f');g.fillStyle=gr;circle(g,c,c,112);
+   g.fillStyle='rgba(255,255,255,.55)';g.beginPath();g.ellipse(88,82,22,14,-.6,0,TAU);g.fill();g.fillStyle='#2a0c3a';for(let i=0;i<5;i++){const a=i/5*TAU;g.beginPath();g.moveTo(c,c-96);g.lineTo(c+Math.cos(a)*16,c-104+Math.sin(a)*8);g.lineTo(c+Math.cos(a+.6)*16,c-104+Math.sin(a+.6)*8);g.fill()}},
+ passion:g=>{const c=128;let gr=g.createRadialGradient(c,c,40,c,c,122);gr.addColorStop(0,'#7b2c6b');gr.addColorStop(1,'#3d1036');g.fillStyle=gr;circle(g,c,c,120);g.fillStyle='#f6ead6';circle(g,c,c,104);
+   gr=g.createRadialGradient(c,c,10,c,c,96);gr.addColorStop(0,'#ffe066');gr.addColorStop(1,'#f5a20f');g.fillStyle=gr;circle(g,c,c,96);
+   for(let i=0;i<34;i++){const a=Math.random()*TAU,r=12+Math.random()*72,x=c+Math.cos(a)*r,y=c+Math.sin(a)*r;g.fillStyle='rgba(255,255,255,.55)';circle(g,x,y,9);g.fillStyle='#1b1208';g.beginPath();g.ellipse(x,y,4.5,6,a,0,TAU);g.fill()}},
+ pineapple:g=>{g.save();g.translate(128,128);g.beginPath();g.moveTo(-104,-80);g.lineTo(104,-80);g.quadraticCurveTo(112,-80,108,-68);g.lineTo(14,106);g.quadraticCurveTo(0,122,-14,106);g.lineTo(-108,-68);g.quadraticCurveTo(-112,-80,-104,-80);g.closePath();
+   const gr=g.createLinearGradient(0,-80,0,110);gr.addColorStop(0,'#ffd23a');gr.addColorStop(1,'#ffee9a');g.fillStyle=gr;g.fill();g.fillStyle='#8a6a1c';g.fillRect(-104,-92,208,16);g.fillStyle='#b5d84a';g.fillRect(-104,-96,208,6);
+   g.strokeStyle='rgba(214,150,10,.45)';g.lineWidth=2;for(let i=-4;i<=4;i++){g.beginPath();g.moveTo(i*22,-74);g.lineTo(0,100);g.stroke()}g.fillStyle='#fff7cf';g.beginPath();g.ellipse(0,64,10,26,0,0,TAU);g.fill();g.restore()},
+ coconut:g=>{g.save();g.translate(128,140);g.beginPath();g.arc(0,40,118,Math.PI*1.12,Math.PI*1.88);g.lineTo(0,40);g.closePath();g.fillStyle='#5a3418';g.fill();
+   g.beginPath();g.arc(0,40,104,Math.PI*1.13,Math.PI*1.87);g.lineTo(0,40);g.closePath();const gr=g.createLinearGradient(0,-70,0,40);gr.addColorStop(0,'#ffffff');gr.addColorStop(1,'#efe9dd');g.fillStyle=gr;g.fill();
+   g.fillStyle='rgba(120,190,220,.35)';g.beginPath();g.ellipse(0,-30,26,9,0,0,TAU);g.fill();g.restore()}
+};
+const ICON={};
+for(const k in PAINT){const c=cv(256);PAINT[k](c.getContext('2d'));ICON[k]=c}
+
+/* ---------- LABEL ART ---------- */
+function spaced(g,txt,x,y,sp){g.textAlign='left';const chars=[...txt];const w=chars.reduce((s,ch)=>s+g.measureText(ch).width,0)+sp*(chars.length-1);let cx=x-w/2;for(const ch of chars){g.fillText(ch,cx,y);cx+=g.measureText(ch).width+sp}}
+function rrect(g,x,y,w,h,r){g.beginPath();g.moveTo(x+r,y);g.arcTo(x+w,y,x+w,y+h,r);g.arcTo(x+w,y+h,x,y+h,r);g.arcTo(x,y+h,x,y,r);g.arcTo(x,y,x+w,y,r);g.closePath()}
+function wrap(g,text,x,y,maxW,lh){const words=text.split(' ');let line='';for(const w of words){const t=line?line+' '+w:w;if(g.measureText(t).width>maxW&&line){g.fillText(line,x,y);y+=lh;line=w}else line=t}if(line)g.fillText(line,x,y);return y+lh}
+function paintLabel(f){
+  const W=2048,H=806,c=cv(W,H),g=c.getContext('2d');
+  let gr=g.createLinearGradient(0,0,0,H);gr.addColorStop(0,f.can);gr.addColorStop(1,f.can2);g.fillStyle=gr;g.fillRect(0,0,W,H);
+  // soft botanical layer on the sides
+  const spots=[[560,180,330,-.5,0],[690,610,280,.6,1],[1470,170,300,.7,2],[1520,620,320,-.4,3],[330,700,200,1.2,4],[1760,640,180,-1,0]];
+  g.globalAlpha=.3;for(const [x,y,s,r,i] of spots){g.save();g.translate(x,y);g.rotate(r);g.drawImage(ICON[f.ing[i]],-s/2,-s/2,s,s);g.restore()}g.globalAlpha=1;
+  // a liquid wave across the base
+  g.fillStyle=f.pillBg;g.globalAlpha=.9;g.beginPath();g.moveTo(0,H);for(let x=0;x<=W;x+=16)g.lineTo(x,H-74+Math.sin(x/W*TAU*3)*14);g.lineTo(W,H);g.closePath();g.fill();g.globalAlpha=1;
+  // top band
+  g.fillStyle='rgba(0,0,0,.18)';g.fillRect(0,0,W,52);g.fillStyle=f.ink;g.font='500 22px "IBM Plex Mono", monospace';g.globalAlpha=.8;
+  const band='RPH BLEND  ·  CLEAN ENERGY FROM PLANTS  ·  ';let bx=0;while(bx<W){g.textAlign='left';g.fillText(band,bx,34);bx+=g.measureText(band).width}g.globalAlpha=1;
+  // FRONT (centre)
+  const cx=1024;g.fillStyle=f.ink;g.textBaseline='alphabetic';
+  g.font='900 270px Unbounded, "Arial Black", sans-serif';g.textAlign='center';g.fillText('RPH',cx,336);
+  g.font='600 56px Unbounded, sans-serif';spaced(g,'BLEND',cx,410,34);
+  g.font='800 40px Unbounded, sans-serif';const nm=f.name.toUpperCase();const nw=g.measureText(nm).width+76;
+  rrect(g,cx-nw/2,448,nw,76,38);g.fillStyle=f.pillBg;g.fill();g.fillStyle=f.pillInk;g.textAlign='center';g.fillText(nm,cx,501);
+  g.fillStyle=f.ink;g.font='500 26px "IBM Plex Mono", monospace';spaced(g,f.notes.toUpperCase().replace(/·/g,'/'),cx,574,3);
+  for(let i=0;i<5;i++){const x=cx+(i-2)*92,y=636;g.fillStyle='rgba(255,255,255,.22)';circle(g,x,y,36);g.drawImage(ICON[f.ing[i]],x-28,y-28,56,56)}
+  g.fillStyle=f.pillInk;g.font='500 23px "IBM Plex Mono", monospace';g.textAlign='center';
+  g.fillText(`${f.caffeine} MG PLANT CAFFEINE   ·   0 G SUGAR   ·   355 ML / 12 FL OZ`,cx,770);
+  // BACK LEFT: nutrition facts
+  const nx=92,ny=96,nwid=330;rrect(g,nx,ny,nwid,588,16);g.fillStyle='#ffffff';g.fill();g.fillStyle='#111';g.textAlign='left';
+  g.font='800 36px Manrope, sans-serif';g.fillText('Nutrition Facts',nx+18,ny+50);g.font='500 18px Manrope, sans-serif';g.fillText('Serving size 1 can (355 mL)',nx+18,ny+80);
+  g.fillRect(nx+18,ny+92,nwid-36,10);g.font='800 30px Manrope, sans-serif';g.fillText('Calories',nx+18,ny+138);g.textAlign='right';g.fillText(String(f.kcal),nx+nwid-18,ny+138);
+  g.fillRect(nx+18,ny+150,nwid-36,5);
+  const rows=[['Total Fat','0 g'],['Sodium',f.ing.includes('coconut')?'45 mg':'10 mg'],['Total Carbohydrate',f.carbs+' g'],['Total Sugars','0 g'],['  Incl. 0 g Added Sugars',''],['Protein','0 g'],['Potassium',f.ing.includes('coconut')?'250 mg':'35 mg'],['Caffeine',f.caffeine+' mg']];
+  let ry=ny+186;g.font='600 19px Manrope, sans-serif';for(const [a,b] of rows){g.textAlign='left';g.fillText(a,nx+18,ry);g.textAlign='right';g.fillText(b,nx+nwid-18,ry);g.fillRect(nx+18,ry+10,nwid-36,1.5);ry+=36}
+  // barcode
+  let x=nx+30;const by=ny+490;g.fillStyle='#111';let s=f.caffeine*7+f.kcal;while(x<nx+nwid-30){s=(s*9301+49297)%233280;const w=1+(s%4);g.fillRect(x,by,w,64);x+=w+1+((s>>3)%3)}
+  g.font='500 15px "IBM Plex Mono", monospace';g.textAlign='center';g.fillText('8 60012 '+(4400+f.caffeine)+' 7',nx+nwid/2,by+84);
+  // BACK RIGHT: ingredients + caution
+  const ix=1630,iw=330;g.fillStyle=f.ink;g.textAlign='left';g.font='800 26px Unbounded, sans-serif';g.fillText('INGREDIENTS',ix,128);
+  g.font='600 21px Manrope, sans-serif';let yy=wrap(g,f.list,ix,170,iw,30);
+  g.font='500 18px Manrope, sans-serif';g.globalAlpha=.85;yy=wrap(g,`Contains ${f.caffeine} mg of naturally occurring caffeine from ${f.source}. Not recommended for children, pregnant or nursing women, or people sensitive to caffeine.`,ix,yy+18,iw,26);
+  g.globalAlpha=1;g.font='500 18px "IBM Plex Mono", monospace';wrap(g,'NO SUGAR · NO SYNTHETIC CAFFEINE · NO ARTIFICIAL COLORS · RECYCLABLE ALUMINUM',ix,yy+22,iw,26);
+  return c;
+}
+
+/* ---------- PAGE BUILD (panels, dots, cards) ---------- */
+const panelsEl=document.getElementById('panels'),dotsEl=document.getElementById('dots');
+const ICON_URL={};for(const k in ICON)ICON_URL[k]=ICON[k].toDataURL();
+const panelEls=[];
+FLAVORS.forEach((f,i)=>{
+  const a=document.createElement('article');a.className='panel';a.id='flavor-'+(i+1);
+  a.style.setProperty('--pa',f.accent);a.style.setProperty('--pi',i===1?'#2b1606':f.pillInk);
+  a.innerHTML=`<div class="copy">
+    <p class="eyebrow"><span class="num">${String(i+1).padStart(2,'0')} / 04</span>${f.notes}</p>
+    <h2 class="fname">${f.name.replace(' ','<br>')}</h2>
+    <p class="desc">${f.desc}</p>
+    <dl class="facts"><div><dt>Caffeine</dt><dd>${f.caffeine}<small>mg</small></dd></div><div><dt>Sugar</dt><dd>0<small>g</small></dd></div><div><dt>Calories</dt><dd>${f.kcal}<small>kcal</small></dd></div></dl>
+    <ul class="chips" aria-label="Key ingredients">${f.ing.map(k=>`<li data-k="${k}">${ING[k].name}</li>`).join('')}</ul>
+    <div class="actions"><button class="crack" type="button" data-i="${i}"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M7 4h10l-1 17H8L7 4Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 2.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M15 9c-1.2 1-1.8 2.3-1.8 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>Crack it open</button>
+    <span class="hint"><svg viewBox="0 0 22 14" fill="none" aria-hidden="true"><path d="M1 7h20M1 7l4-4M1 7l4 4M21 7l-4-4M21 7l-4 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Drag to spin 360°</span></div>
+  </div>`;
+  panelsEl.appendChild(a);panelEls.push(a);
+  const d=document.createElement('button');d.type='button';d.innerHTML=`<span>${f.name}</span>`;d.setAttribute('aria-label',f.name);d.addEventListener('click',()=>goTo(i));dotsEl.appendChild(d);
+});
+const dots=[...dotsEl.children];
+const allPanels=[...panelsEl.children];
+
+// ingredient library
+const groupsEl=document.getElementById('groups');
+const usedIn=k=>FLAVORS.filter(f=>f.ing.includes(k));
+GROUPS.forEach(G=>{
+  const keys=Object.keys(ING).filter(k=>ING[k].g===G.k);
+  const row=document.createElement('div');row.className='group';
+  let body;
+  if(G.k==='sweet'){const k=keys[0];body=`<div class="sweet"><img src="${ICON_URL[k]}" alt=""><div><h4>${ING[k].name}</h4><p>${ING[k].role}</p><p class="big">In all four cans · 0 g sugar · 0 sucralose · 0 aspartame</p></div></div>`}
+  else body=`<div class="cards">${keys.map(k=>`<div class="card"><img src="${ICON_URL[k]}" alt=""><div><h4>${ING[k].name}</h4><p class="role">${ING[k].role}</p><div class="in">${usedIn(k).map(f=>`<span><i style="background:${f.can}"></i>${f.name}</span>`).join('')}</div></div></div>`).join('')}</div>`;
+  row.innerHTML=`<div><h3>${G.t}</h3><p>${G.d}</p></div>${body}`;groupsEl.appendChild(row);
+});
+document.getElementById('swatches').innerHTML=FLAVORS.map(f=>`<span style="background:${f.can}" title="${f.name}"></span>`).join('');
+
+// form
+document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const v=document.getElementById('email').value.trim(),m=document.getElementById('msg');
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)){m.textContent='Enter an email address like name@example.com.';return}
+  m.textContent='Thanks. Sign-ups open with the launch site; this preview doesn’t store emails yet.'});
+
+/* ---------- SCROLL MAPPING ---------- */
+const LABEL_URLS=[];
+const stage=document.getElementById('stage'),sticky=document.getElementById('sticky'),nav=document.getElementById('nav');
+const bgwords=[...document.querySelectorAll('.bgword')],hintEl=document.getElementById('scrollhint');
+function stageProgress(){
+  // each can holds still while its panel fills the screen, then hands over during the last 45% of the scroll
+  const y=window.scrollY;const tops=allPanels.map(p=>p.getBoundingClientRect().top+window.scrollY);
+  for(let k=0;k<tops.length;k++){const t0=tops[k],t1=k<tops.length-1?tops[k+1]:t0+allPanels[k].offsetHeight;if(y<t1||k===tops.length-1)return k+clamp(((y-t0)/(t1-t0)-.55)/.45,0,1)}
+  return 0;
+}
+function goTo(i){const el=allPanels[i+1];window.scrollTo({top:el.getBoundingClientRect().top+window.scrollY,behavior:reduce?'auto':'smooth'})}
+const strip=document.getElementById('strip');
+
+/* page-level scroll UI: runs with or without WebGL */
+const UI={p:0,current:0};
+(function(){
+  const bgs=FLAVORS.map(f=>f.bg),accs=FLAVORS.map(f=>f.accent);let last=performance.now(),lastVars='';
+  function tick(now){
+    const dt=Math.min(.05,(now-last)/1000);last=now;
+    const sp=stageProgress(),target=clamp(sp-1,0,FLAVORS.length-1);
+    UI.p=reduce?target:lerp(UI.p,target,1-Math.pow(.0009,dt));
+    const p=UI.p,i0=Math.floor(p),fr=p-i0,i1=Math.min(i0+1,FLAVORS.length-1);UI.current=Math.round(p);
+    const narrow=innerWidth<=820,bgc=mix(bgs[i0],bgs[i1],fr),acc=mix(accs[i0],accs[i1],fr);
+    if(bgc+acc+narrow!==lastVars){lastVars=bgc+acc+narrow;const rs=document.documentElement.style;rs.setProperty('--bg',bgc);rs.setProperty('--accent',acc);
+      sticky.style.setProperty('--gx',narrow?'50%':'70%');sticky.style.setProperty('--gy',narrow?'30%':'50%')}
+    bgwords.forEach((el,i)=>{const d=i-p;el.style.opacity=clamp(1-Math.abs(d)*1.4,0,1).toFixed(3);el.style.transform=`translateX(${(d*-18).toFixed(2)}vw)`});
+    dots.forEach((d,i)=>d.classList.toggle('on',i===UI.current&&sp>.5));
+    hintEl.style.opacity=sp<.2?.7:0;
+    nav.classList.toggle('solid',stage.getBoundingClientRect().bottom<70);
+    const fb=document.getElementById('fallbackImg');if(document.body.classList.contains('nogl')&&LABEL_URLS[UI.current]&&fb.dataset.i!=UI.current){fb.dataset.i=UI.current;fb.src=LABEL_URLS[UI.current]}
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+
+/* ---------- 3D ---------- */
+const canvas=document.getElementById('gl');
+let renderer;
+try{renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true,powerPreference:'high-performance'})}catch(e){renderer=null}
+
+const fontsReady=Promise.race([Promise.all([
+  document.fonts.load('900 100px Unbounded'),document.fonts.load('800 40px Unbounded'),document.fonts.load('600 40px Unbounded'),
+  document.fonts.load('500 20px "IBM Plex Mono"'),document.fonts.load('800 20px Manrope'),document.fonts.load('600 20px Manrope')]).catch(()=>{}),
+  new Promise(r=>setTimeout(r,3000))]);
+
+fontsReady.then(()=>{
+  const LABELS=FLAVORS.map(paintLabel);
+  // lineup strip uses the front of each label
+  strip.innerHTML=FLAVORS.map((f,i)=>{const c=cv(700,560),g=c.getContext('2d');g.drawImage(LABELS[i],674,80,700,560,0,0,700,560);
+    return `<button class="flv" type="button" data-i="${i}" style="--fb:${f.can};--fi:${f.ink}"><img src="${c.toDataURL('image/jpeg',.85)}" alt="${f.name} can label"><h4>${f.name}</h4><p>${f.notes}</p><span class="go">Crack this can ↑</span></button>`}).join('');
+  strip.querySelectorAll('.flv').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i;goTo(i);setTimeout(()=>crack(i),reduce?50:900)}));
+  document.getElementById('loading').remove();
+  if(!renderer){LABELS.forEach((c,i)=>LABEL_URLS[i]=c.toDataURL('image/jpeg',.9));document.body.classList.add('nogl');return}
+  start3D(LABELS);
+});
+
+let crack=()=>{};
+function start3D(LABELS){
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.outputEncoding=THREE.sRGBEncoding;
+  const scene=new THREE.Scene();
+  const camera=new THREE.PerspectiveCamera(30,1,.1,100);camera.position.set(0,0,12);
+
+  // studio environment painted on a canvas: soft boxes give the aluminum its highlights
+  const ec=cv(1024,512),eg=ec.getContext('2d');let gr=eg.createLinearGradient(0,0,0,512);gr.addColorStop(0,'#5b6460');gr.addColorStop(.5,'#22282a');gr.addColorStop(1,'#0c0f10');eg.fillStyle=gr;eg.fillRect(0,0,1024,512);
+  const box=(x,y,w,h,a)=>{const r=eg.createRadialGradient(x+w/2,y+h/2,0,x+w/2,y+h/2,Math.max(w,h)/1.2);r.addColorStop(0,`rgba(255,255,255,${a})`);r.addColorStop(1,'rgba(255,255,255,0)');eg.fillStyle=r;eg.fillRect(x-w,y-h,w*3,h*3)};
+  box(180,150,120,200,1);box(560,120,90,240,.95);box(820,180,140,120,.7);box(380,40,260,60,.8);
+  const envTex=new THREE.CanvasTexture(ec);envTex.mapping=THREE.EquirectangularReflectionMapping;envTex.encoding=THREE.sRGBEncoding;
+  const pmrem=new THREE.PMREMGenerator(renderer);scene.environment=pmrem.fromEquirectangular(envTex).texture;envTex.dispose();
+  const key=new THREE.DirectionalLight(0xffffff,.9);key.position.set(5,6,8);scene.add(key);
+  const rim=new THREE.DirectionalLight(0xffffff,.6);rim.position.set(-6,2,-5);scene.add(rim);
+  scene.add(new THREE.AmbientLight(0xffffff,.25));
+
+  const metal=new THREE.MeshStandardMaterial({color:0xdfe3e6,metalness:1,roughness:.26,side:THREE.DoubleSide});
+  const lidMat=new THREE.MeshStandardMaterial({color:0xc9ced2,metalness:1,roughness:.34});
+  const dark=new THREE.MeshBasicMaterial({color:0x050505});
+  const PROFILE=[[0,.2],[.42,.16],[.68,.07],[.78,0],[.86,0],[.94,.06],[.99,.2],[1,.3],[1,2.78],[.99,2.86],[.92,3.0],[.86,3.08],[.855,3.14],[.875,3.19],[.86,3.21],[.835,3.18],[.815,3.13]];
+  const bodyGeo=new THREE.LatheGeometry(PROFILE.map(([r,y])=>new THREE.Vector2(r,y-1.6)),96);
+  const LID_Y=3.13-1.6;
+  const labelGeo=new THREE.CylinderGeometry(1.004,1.004,2.48,128,1,true,Math.PI,TAU);
+  const tabShape=new THREE.Shape();tabShape.moveTo(-.3,-.11);tabShape.lineTo(.42,-.15);tabShape.quadraticCurveTo(.56,0,.42,.15);tabShape.lineTo(-.3,.11);tabShape.quadraticCurveTo(-.4,0,-.3,-.11);
+  const hole=new THREE.Path();hole.absellipse(.3,0,.1,.075,0,TAU,false);tabShape.holes.push(hole);
+  const tabGeo=new THREE.ExtrudeGeometry(tabShape,{depth:.025,bevelEnabled:false,curveSegments:24});
+  const circleGeo=new THREE.CircleGeometry(1,40),plane=new THREE.PlaneGeometry(1,1),sphere=new THREE.SphereGeometry(1,10,8);
+
+  const carousel=new THREE.Group();scene.add(carousel);
+  const cans=FLAVORS.map((f,i)=>{
+    const root=new THREE.Group(),tilt=new THREE.Group(),spin=new THREE.Group();root.add(tilt);tilt.add(spin);
+    const map=new THREE.CanvasTexture(LABELS[i]);map.encoding=THREE.sRGBEncoding;map.anisotropy=renderer.capabilities.getMaxAnisotropy();
+    spin.add(new THREE.Mesh(bodyGeo,metal));
+    const label=new THREE.Mesh(labelGeo,new THREE.MeshStandardMaterial({map,metalness:.3,roughness:.32}));label.position.y=(.3+2.78)/2-1.6;spin.add(label);
+    const lid=new THREE.Mesh(circleGeo,lidMat);lid.scale.setScalar(.815);lid.rotation.x=-Math.PI/2;lid.position.y=LID_Y;spin.add(lid);
+    const mouth=new THREE.Mesh(circleGeo,dark);mouth.rotation.x=-Math.PI/2;mouth.position.set(.48,LID_Y+.004,0);mouth.scale.set(.001,.001,1);spin.add(mouth);
+    const tabBase=new THREE.Group();tabBase.position.set(0,LID_Y+.012,0);tabBase.rotation.y=Math.PI;spin.add(tabBase);const tabPivot=new THREE.Group();tabBase.add(tabPivot);
+    const tab=new THREE.Mesh(tabGeo,lidMat);tab.rotation.x=-Math.PI/2;tabPivot.add(tab);
+    const rivet=new THREE.Mesh(sphere,lidMat);rivet.scale.set(.05,.02,.05);rivet.position.y=.02;tabPivot.add(rivet);
+    const marker=new THREE.Object3D();marker.position.set(.62,LID_Y+.05,0);spin.add(marker);
+    carousel.add(root);
+    const liquid=new THREE.MeshStandardMaterial({color:new THREE.Color(f.liquid).convertSRGBToLinear(),roughness:.08,metalness:0,transparent:true,opacity:.88});
+    return {f,i,root,tilt,spin,mouth,tabPivot,marker,liquid,rotY:i*.9,vel:0,tiltX:0,anim:null};
+  });
+
+  const ingMat={};for(const k in ICON){const t=new THREE.CanvasTexture(ICON[k]);t.encoding=THREE.sRGBEncoding;ingMat[k]=new THREE.MeshBasicMaterial({map:t,transparent:true,alphaTest:.35,side:THREE.DoubleSide})}
+  const fizzMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.9});
+
+  /* layout */
+  let W=1,H=1,narrow=false,base={x:0,y:0,s:1},SP=8;
+  function resize(){
+    W=sticky.clientWidth;H=sticky.clientHeight;renderer.setSize(W,H,false);camera.aspect=W/H;camera.updateProjectionMatrix();
+    const vh=2*camera.position.z*Math.tan(camera.fov*Math.PI/360),vw=vh*camera.aspect;narrow=innerWidth<=820;
+    if(narrow){const s=clamp(Math.min(.44*vw/2,.27*vh/3.2),.4,1);base={x:0,y:vh*.23,s}}
+    else{const s=clamp(.55*vh/3.2,.6,1.05);base={x:vw*.2,y:-.1,s}}
+    SP=Math.max(vw*.95,6);
+  }
+  resize();addEventListener('resize',resize);
+
+  /* particles */
+  const parts=[];const tagsEl=document.getElementById('tags');
+  function spawn(kind,can,opt){
+    const s=base.s,wp=new THREE.Vector3();can.marker.getWorldPosition(wp);
+    const up=new THREE.Vector3(0,1,0).applyQuaternion(can.tilt.getWorldQuaternion(new THREE.Quaternion()));
+    let mesh,size,life,v;
+    if(kind==='fizz'){mesh=new THREE.Mesh(sphere,fizzMat);size=rand(.015,.04)*s;life=rand(.4,.9);v=new THREE.Vector3(rand(-.6,.6),rand(1.2,2.6),rand(-.4,.6)).multiplyScalar(s)}
+    else if(kind==='drop'){mesh=new THREE.Mesh(sphere,can.liquid);size=rand(.03,.075)*s;life=rand(1.6,2.6);v=up.clone().multiplyScalar(rand(.9,1.6)*s).add(new THREE.Vector3(rand(-.35,.35),rand(-.2,.4),rand(-.3,.7)).multiplyScalar(s))}
+    else{mesh=new THREE.Mesh(plane,ingMat[kind]);size=(kind==='stevia'||kind==='matcha'||kind==='guayusa'||kind==='mint'||kind==='yerba'?rand(.42,.6):rand(.32,.46))*s;life=rand(2.4,3.4);
+      v=up.clone().multiplyScalar(rand(.9,1.7)*s).add(new THREE.Vector3(rand(-.5,.7),rand(-.1,.9),rand(.1,1.4)).multiplyScalar(s));
+      mesh.rotation.set(rand(0,TAU),rand(0,TAU),rand(0,TAU))}
+    mesh.position.copy(wp);mesh.scale.setScalar(size);scene.add(mesh);
+    const p={mesh,v,size,life,max:life,kind,av:new THREE.Vector3(rand(-4,4),rand(-4,4),rand(-3,3)),tag:null};
+    if(opt&&opt.tag){const el=document.createElement('div');el.className='tag';el.innerHTML=`<i style="background:${can.f.can}"></i>${ING[kind].name}`;tagsEl.appendChild(el);p.tag=el}
+    parts.push(p);
+  }
+  const proj=new THREE.Vector3();
+  function updateParts(dt){
+    const g=(kind)=>kind==='fizz'?-1.5:kind==='drop'?-6.5:-4.2;
+    for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.life-=dt;
+      p.v.y+=g(p.kind)*base.s*dt;const drag=p.kind==='drop'?.995:.985;p.v.multiplyScalar(Math.pow(drag,dt*60));
+      if(p.kind!=='drop'&&p.kind!=='fizz'){p.v.x+=Math.sin(p.life*3+i)*.6*dt;p.mesh.rotation.x+=p.av.x*dt;p.mesh.rotation.y+=p.av.y*dt;p.mesh.rotation.z+=p.av.z*dt}
+      p.mesh.position.addScaledVector(p.v,dt);
+      const k=clamp(p.life/.45,0,1)*clamp((p.max-p.life)/.12,0,1);p.mesh.scale.setScalar(p.size*Math.max(k,.001));
+      if(p.tag){proj.copy(p.mesh.position).project(camera);const x=(proj.x+1)/2*W,y=(1-proj.y)/2*H;p.tag.style.transform=`translate(${x}px,${y}px) translate(-50%,-160%)`;p.tag.style.opacity=clamp(p.life/.6,0,1)*clamp((p.max-p.life)/.25,0,1)}
+      if(p.life<=0||p.mesh.position.y<-9){scene.remove(p.mesh);if(p.tag)p.tag.remove();parts.splice(i,1)}}
+  }
+
+  /* opening sequence */
+  let current=0;
+  crack=function(i){
+    const can=cans[i];if(can.anim)return;
+    can.anim={t:0,from:can.rotY,to:Math.round(can.rotY/TAU)*TAU,emitted:0,drops:0,fizzed:false,seen:{},carry:0,dcarry:0};
+    can.vel=0;setButtons();
+  };
+  function setButtons(){document.querySelectorAll('.crack').forEach(b=>{const c=cans[+b.dataset.i];b.disabled=!!c.anim;b.lastChild.textContent=c.anim?' Pouring…':' Crack it open'})}
+  function runAnim(can,dt){
+    const a=can.anim;a.t+=dt;const t=a.t;
+    can.rotY=lerp(a.from,a.to,ease(t/.55));can.tiltX=lerp(can.tiltX,0,.15);
+    const tabOpen=t<4.4?ease((t-.15)/.35):1-ease((t-4.4)/.5);can.tabPivot.rotation.z=tabOpen*1.25;
+    const m=t<4.5?ease((t-.32)/.18):1-ease((t-4.5)/.4);can.mouth.scale.set(Math.max(m*.27,.001),Math.max(m*.2,.001),1);
+    if(t>.36&&!a.fizzed){a.fizzed=true;for(let k=0;k<(reduce?10:34);k++)spawn('fizz',can)}
+    const tl=t<.65?0:t<1.4?ease((t-.65)/.75):t<4.1?1:1-ease((t-4.1)/.9);
+    can.tilt.rotation.z=-tl*2.05;can.tilt.position.y=tl*(narrow?-.25:.75);can.tilt.position.x=tl*(narrow?-.75:-.55);can.tilt.scale.setScalar(1-tl*(narrow?.05:.18));
+    document.body.classList.toggle('pouring',tl>.05);
+    if(t>1.15&&t<3.9){
+      const ings=can.f.ing;a.carry+=dt*(reduce?14:34);
+      while(a.carry>=1){a.carry--;const kind=ings[a.emitted%ings.length];const first=!a.seen[kind];a.seen[kind]=true;spawn(kind,can,{tag:first});a.emitted++;
+        if(first){const chip=allPanels[can.i+1].querySelector(`[data-k="${kind}"]`);if(chip)chip.classList.add('lit')}}
+      a.dcarry+=dt*(reduce?20:70);while(a.dcarry>=1){a.dcarry--;spawn('drop',can)}
+    }
+    if(t>5.2){can.anim=null;can.tilt.rotation.z=0;can.tilt.position.set(0,0,0);can.tilt.scale.setScalar(1);document.body.classList.remove('pouring');setButtons();
+      setTimeout(()=>allPanels[can.i+1].querySelectorAll('.chips li').forEach(li=>li.classList.remove('lit')),1800)}
+  }
+  document.querySelectorAll('.crack').forEach(b=>b.addEventListener('click',()=>{const i=+b.dataset.i;if(i!==current){goTo(i);setTimeout(()=>crack(i),reduce?50:900)}else crack(i)}));
+
+  /* pointer: drag to spin (with inertia), tilt to see top and base, tap to crack */
+  const ray=new THREE.Raycaster(),ptr=new THREE.Vector2();
+  let drag=null;
+  function hit(e){const r=canvas.getBoundingClientRect();ptr.set((e.clientX-r.left)/r.width*2-1,-((e.clientY-r.top)/r.height)*2+1);ray.setFromCamera(ptr,camera);return ray.intersectObject(cans[current].root,true).length>0}
+  canvas.addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY,lx:e.clientX,ly:e.clientY,t:performance.now(),moved:0,id:e.pointerId};canvas.classList.add('grabbing')});
+  canvas.addEventListener('pointermove',e=>{
+    if(!drag){if(e.pointerType==='mouse')canvas.classList.toggle('pointer',hit(e));return}
+    const dx=e.clientX-drag.lx,dy=e.clientY-drag.ly;drag.lx=e.clientX;drag.ly=e.clientY;drag.moved+=Math.abs(dx)+Math.abs(dy);
+    if(drag.moved>6&&!drag.cap){try{canvas.setPointerCapture(drag.id)}catch(_){}drag.cap=true}
+    const can=cans[current];if(can.anim)return;
+    can.rotY+=dx*.012;can.vel=dx*.012/Math.max(1/60,1/60);if(e.pointerType==='mouse')can.tiltX=clamp(can.tiltX+dy*.006,-.7,.7);
+  });
+  const end=e=>{if(!drag)return;const tap=drag.moved<8&&performance.now()-drag.t<450;canvas.classList.remove('grabbing');
+    if(tap&&e.type==='pointerup'&&hit(e))crack(current);drag=null};
+  canvas.addEventListener('pointerup',end);canvas.addEventListener('pointercancel',end);
+  addEventListener('keydown',e=>{if(/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;const c=cans[current];if(c.anim)return;if(e.key==='ArrowLeft')c.vel=-6;if(e.key==='ArrowRight')c.vel=6});
+
+  /* loop */
+  let last=performance.now(),clock=0;
+  function frame(now){
+    const dt=Math.min(.05,(now-last)/1000);last=now;clock+=dt;
+    const p=UI.p;current=UI.current;
+
+    cans.forEach(c=>{
+      const d=c.i-p;const vis=Math.abs(d)<1.6;c.root.visible=vis||!!c.anim;if(!c.root.visible)return;
+      c.root.position.set(base.x+d*SP,base.y+(reduce?0:Math.sin(clock*1.3+c.i)*.06*base.s),0);c.root.scale.setScalar(base.s);
+      if(c.anim)runAnim(c,dt);
+      else{if(!drag||c.i!==current){c.rotY+=c.vel*dt;c.vel*=Math.pow(.04,dt);if(!reduce&&Math.abs(c.vel)<.5)c.rotY+=.32*dt}
+        if(!drag)c.tiltX=lerp(c.tiltX,0,1-Math.pow(.05,dt))}
+      c.spin.rotation.y=c.rotY+d*1.6;c.tilt.rotation.x=c.tiltX+.12;c.root.rotation.z=d*-.25;
+    });
+    updateParts(dt);
+    renderer.render(scene,camera);
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+}
+})();
+</script>
+
+</body>
+</html>
