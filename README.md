@@ -12,4 +12,6 @@ Clean energy from plants. A showcase site for the RPH Blend launch.
 
 Everything (can labels, ingredient art, nutrition panels) is drawn in code, so the site is one self-contained `public/index.html` with no image assets. QR codes for rphblend.com are in `public/qr/`.
 
+## Deploying
 
+Hosted on Cloudflare at https://rphblend.com. `wrangler.jsonc` tells Cloudflare to serve the `public` folder as-is (no build step), so every merge to `main` redeploys the site.
